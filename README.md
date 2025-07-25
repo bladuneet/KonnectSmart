@@ -1,2 +1,3 @@
 # KonnectSmart
 Bulk Digital Product Distribution
+The ability to send bulk Mobile Money, Bulk Data and Bulk Airtime is a valuable opportunity to be harnessed by institutions such as Non Profit Organizations, Government Programs such as during Political Campaigns, as well as Business Enterprises. This business model saves the above mentioned entities time and money, while at the same time improving process efficiency and automated reports for accountability. With all these advantages, African Governments, NGOs and Business Enterprises can benefit from KonnectSmart through bringing monetary and time value to their organizations.
