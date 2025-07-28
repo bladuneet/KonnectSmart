@@ -1,0 +1,191 @@
+Folder Structure (GitHub-ready)
+pgsql
+Copy
+Edit
+bulk-distributor-mvp/
+├── backend/
+│   ├── manage.py
+│   ├── requirements.txt
+│   ├── core/
+│   │   ├── models.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── admin.py
+│   │   └── tasks.py
+│   └── bulk_distributor/
+│       ├── settings.py
+│       └── urls.py
+├── frontend/
+│   ├── public/
+│   └── src/
+│       ├── App.js
+│       ├── components/
+│       ├── pages/
+│       └── utils/
+└── README.md
+🔧 Backend Highlights (Django)
+models.py
+python
+Copy
+Edit
+from django.db import models
+
+class User(models.Model):
+    ROLE_CHOICES = [
+        ('admin', 'Administrator'),
+        ('org_admin', 'Organization Admin'),
+        ('recipient', 'Recipient')
+    ]
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=15, blank=True)
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    organization = models.ForeignKey('Organization', on_delete=models.SET_NULL, null=True, blank=True)
+
+class Organization(models.Model):
+    name = models.CharField(max_length=100)
+    wallet_balance = models.DecimalField(max_digits=10, decimal_places=2)
+
+class RecipientGroup(models.Model):
+    name = models.CharField(max_length=100)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+
+class Recipient(models.Model):
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=15)
+    group = models.ForeignKey(RecipientGroup, on_delete=models.CASCADE, null=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+
+class BundleDistribution(models.Model):
+    BUNDLE_CHOICES = [
+        ('100MB', '100MB'), ('500MB', '500MB'), ('1GB', '1GB')
+    ]
+    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE)
+    bundle_type = models.CharField(max_length=10, choices=BUNDLE_CHOICES)
+    status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AuditTrail(models.Model):
+    action = models.TextField()
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+views.py (key API endpoints)
+python
+Copy
+Edit
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import Recipient, BundleDistribution
+import csv
+
+@api_view(['POST'])
+def import_csv(request):
+    file = request.FILES['file']
+    decoded_file = file.read().decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded_file)
+    for row in reader:
+        Recipient.objects.create(
+            name=row['name'], phone=row['phone'], organization=request.user.organization
+        )
+    return Response({'message': 'Recipients imported successfully'})
+
+@api_view(['POST'])
+def distribute_bundle(request):
+    data = request.data
+    for recipient_id, bundle in data['bundles'].items():
+        recipient = Recipient.objects.get(id=recipient_id)
+        BundleDistribution.objects.create(recipient=recipient, bundle_type=bundle)
+    return Response({'message': 'Distribution started'})
+
+@api_view(['GET'])
+def get_dashboard_stats(request):
+    total = BundleDistribution.objects.count()
+    success = BundleDistribution.objects.filter(status='success').count()
+    return Response({'total': total, 'success': success})
+📅 Scheduling with Celery (tasks.py)
+python
+Copy
+Edit
+from celery import shared_task
+from .models import BundleDistribution
+
+@shared_task
+def process_scheduled_distribution():
+    pending = BundleDistribution.objects.filter(status='pending')
+    for dist in pending:
+        # Simulate success
+        dist.status = 'success'
+        dist.save()
+💳 Payment API (Mock)
+views.py (Add wallet top-up)
+python
+Copy
+Edit
+@api_view(['POST'])
+def mobile_money_payment(request):
+    org = request.user.organization
+    amount = float(request.data['amount'])
+    org.wallet_balance += amount
+    org.save()
+    return Response({'message': 'Wallet funded successfully'})
+📊 React Frontend Key Features
+Upload CSV
+
+Select recipients/groups and assign bundle types
+
+Schedule distributions (simple form)
+
+View reporting dashboard
+
+Role-based navigation (Admin, Org Admin, Recipient)
+
+📦 requirements.txt
+txt
+Copy
+Edit
+Django>=4.2
+djangorestframework
+celery
+django-cors-headers
+gunicorn
+🚀 GitHub README.md Sample
+markdown
+Copy
+Edit
+# Bulk Distributor MVP
+
+## Supports:
+- NGOs, Governments, Enterprises, Campaigns
+- Bulk Internet Bundles, Mobile Money, and Airtime
+
+## Features
+- 📥 CSV Import of Phone Numbers
+- 💳 MoMo Wallet & Transactions (Mock)
+- 📅 Recurring Distribution Scheduling
+- 📊 Dashboard with Stats
+- 🔐 Role-Based Access: Admin, Org Admin, Recipient
+
+## Tech Stack
+- Django REST Framework + Celery
+- React.js (Frontend)
+
+## Setup
+1. Backend
+```bash
+cd backend
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+Frontend
+
+bash
+Copy
+Edit
+cd frontend
+npm install
+npm start
+yaml
+Copy
+Edit
+
+---
